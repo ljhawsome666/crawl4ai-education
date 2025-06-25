@@ -8,6 +8,8 @@ from django.utils.text import slugify
 from crawl4ai import AsyncWebCrawler
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString, Tag
+from .models import CrawlResultShowcase
+from asgiref.sync import sync_to_async
 
 
 # HTML 转 Markdown 的递归函数
@@ -71,6 +73,7 @@ def html_to_markdown(element):
     return ''.join(html_to_markdown(child) for child in element.children)
 
 
+
 @csrf_exempt
 async def crawl_and_filter(request):
     if request.method != 'POST':
@@ -113,13 +116,21 @@ async def crawl_and_filter(request):
                 if not isinstance(title, str):
                     title = str(title)
 
+                # ✅ 解决 500 报错：使用 sync_to_async 保存
+                await sync_to_async(CrawlResultShowcase.objects.create)(
+                    url=page.url,
+                    keyword=raw_keyword,
+                    content_preview=markdown[:500],
+                    is_approved=False,
+                )
+
                 filtered_results.append({
                     "url": page.url,
                     "title": title,
                     "markdown": markdown[:10000]
                 })
 
-        # 保存文件
+        # 保存为 markdown 文件
         if filtered_results:
             output_dir = os.path.join(settings.BASE_DIR, "output_files")
             os.makedirs(output_dir, exist_ok=True)
@@ -147,11 +158,12 @@ async def crawl_and_filter(request):
                 'download_url': f"/api/download/{filename}"
             })
 
-
         else:
             return JsonResponse({'results': [], 'filename': '', 'download_url': ''})
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
 
 
@@ -167,3 +179,12 @@ def download_file(request, filename):
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
     return response
+
+def list_showcases(request):
+    data = CrawlResultShowcase.objects.filter(is_approved=True).order_by('-created_at')
+    result = [{
+        'url': item.url,
+        'keyword': item.keyword,
+        'content_preview': item.content_preview,
+    } for item in data]
+    return JsonResponse(result, safe=False)

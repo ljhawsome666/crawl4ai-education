@@ -23,10 +23,10 @@
 <script setup>
 const menuItems = [
   { name: '用户', route: '/dashboard/user' },
-  { name: '首页', route: '/dashboard/home' },
   { name: '新建', route: '/dashboard/crawlFilter' },
   { name: '任务', route: '/dashboard/task' },
-  { name: '数据广场', route: '/dashboard/dataShowcase' }
+  { name: '模板', route: '/dashboard/case' },
+  { name: '历史记录', route: '/dashboard/dataShowcase' }
 ]
 </script>
 

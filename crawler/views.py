@@ -10,9 +10,8 @@ from bs4.element import NavigableString, Tag
 from crawl4ai import AsyncWebCrawler
 from crawler.models import CrawlResultShowcase
 from asgiref.sync import sync_to_async
-from urllib.parse import urljoin
 
-
+# ✅ Markdown 转换函数
 def html_to_markdown(element):
     if isinstance(element, NavigableString):
         return element.strip()
@@ -36,7 +35,7 @@ def html_to_markdown(element):
         thead = element.find("thead")
         if thead:
             headers = [th.get_text(strip=True) for th in thead.find_all("th")]
-        elif first := element.find("tr"):
+        elif (first := element.find("tr")):
             headers = [th.get_text(strip=True) for th in first.find_all(["th", "td"])]
         if headers:
             rows.append("| " + " | ".join(headers) + " |")
@@ -51,7 +50,30 @@ def html_to_markdown(element):
         return "\n" + "\n".join("> " + line for line in content.splitlines()) + "\n\n"
     return ''.join(html_to_markdown(c) for c in element.children)
 
+# ✅ 图片与关键词相关性判断
+def is_image_relevant(img: Tag, keywords: list) -> bool:
+    def text_contains_kw(text):
+        return text and any(kw in text.lower() for kw in keywords)
 
+    if text_contains_kw(img.get("alt")):
+        return True
+
+    figcaption = img.find_parent("figure")
+    if figcaption:
+        caption_text = figcaption.find("figcaption")
+        if caption_text and text_contains_kw(caption_text.get_text(strip=True)):
+            return True
+
+    parent_text = img.find_parent()
+    if parent_text and text_contains_kw(parent_text.get_text(strip=True)):
+        return True
+
+    if text_contains_kw(img.get("src", "")):
+        return True
+
+    return False
+
+# ✅ 主函数
 async def run_crawler(url: str, raw_keyword: str):
     keywords = [kw.strip().lower() for kw in raw_keyword.replace('，', ',').split(',') if kw.strip()]
     if not keywords:
@@ -66,22 +88,14 @@ async def run_crawler(url: str, raw_keyword: str):
     safe_keyword = slugify(raw_keyword)
     os.makedirs(output_dir, exist_ok=True)
 
-    # 图片保存目录
-    image_dir = os.path.join(output_dir, f"images_{safe_keyword}_{timestamp}")
+    temp_dir = os.path.join(output_dir, f"temp_{safe_keyword}_{timestamp}")
+    os.makedirs(temp_dir, exist_ok=True)
+
+    image_dir = os.path.join(temp_dir, "images")
     os.makedirs(image_dir, exist_ok=True)
 
-    md_filename = f"crawl_result_{safe_keyword}_{timestamp}.md"
-    md_filepath = os.path.join(output_dir, md_filename)
-
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/114.0.0.0 Safari/537.36"
-        ),
-        "Accept": "image/*,*/*;q=0.8",
-        "Referer": url
-    }
+    md_filename = "result.md"
+    md_filepath = os.path.join(temp_dir, md_filename)
 
     with open(md_filepath, "w", encoding="utf-8") as f:
         for page in results:
@@ -93,40 +107,47 @@ async def run_crawler(url: str, raw_keyword: str):
             paragraphs = soup.find_all(['p', 'li', 'blockquote'])
 
             matched_sections = []
+            image_markdown_lines = []
+
             for para in paragraphs:
                 text = para.get_text(strip=True)
                 if any(kw in text.lower() for kw in keywords):
                     matched_sections.append(html_to_markdown(para))
 
-            # ✅ 下载页面中所有图片
+            # 图片处理
             img_tags = soup.find_all("img")
             for idx, img in enumerate(img_tags):
                 img_url = img.get("src")
-                if not img_url:
+                if not img_url or not img_url.startswith("http"):
                     continue
-                if img_url.startswith("//"):
-                    img_url = "https:" + img_url
-                elif img_url.startswith("/"):
-                    img_url = urljoin(page.url, img_url)
-                elif not img_url.startswith("http"):
+                if not is_image_relevant(img, keywords):
                     continue
 
                 try:
-                    resp = requests.get(img_url, headers=headers, timeout=8)
-                    resp.raise_for_status()
-                    ext = os.path.splitext(img_url)[-1].split("?")[0][:5]
-                    ext = ext if ext.startswith(".") else ".jpg"
-                    safe_img_name = re.sub(r"[^a-zA-Z0-9_.-]", "_", os.path.basename(img_url))
-                    if not safe_img_name.endswith(ext):
-                        safe_img_name += ext
-                    img_filename = f"{idx}_{safe_img_name}"
+                    headers = {
+                        "User-Agent": "Mozilla/5.0",
+                        "Accept": "image/*,*/*;q=0.8",
+                        "Referer": url
+                    }
+                    response = requests.get(img_url, headers=headers, timeout=10)
+                    response.raise_for_status()
+                    img_data = response.content
+
+                    img_ext = os.path.splitext(img_url)[-1].split("?")[0][:5]
+                    img_ext = img_ext if img_ext.startswith('.') else '.jpg'
+                    img_filename = f"{safe_keyword}_{timestamp}_{idx}{img_ext}"
                     img_path = os.path.join(image_dir, img_filename)
+
                     with open(img_path, "wb") as img_file:
-                        img_file.write(resp.content)
+                        img_file.write(img_data)
+
+                    alt_text = img.get("alt", "图片")
+                    image_markdown_lines.append(f"![{alt_text}](images/{img_filename})")
+
                 except Exception as e:
                     print(f"[图片下载失败] {img_url}: {e}")
 
-            if matched_sections:
+            if matched_sections or image_markdown_lines:
                 markdown = '\n'.join(matched_sections)
                 title = str(page.metadata.get("title", "") or "")
 
@@ -139,6 +160,9 @@ async def run_crawler(url: str, raw_keyword: str):
                 f.write(f"# {title or '无标题'}\n")
                 f.write(f"链接: {page.url}\n\n")
                 f.write(markdown or '')
+                if image_markdown_lines:
+                    f.write("\n\n## 相关图片\n\n")
+                    f.write('\n\n'.join(image_markdown_lines))
                 f.write("\n\n---\n\n")
 
                 filtered_results.append({
@@ -147,16 +171,22 @@ async def run_crawler(url: str, raw_keyword: str):
                     "markdown": markdown[:10000]
                 })
 
-    # ✅ 打包 markdown 文件和图片为 zip
+    # 打包为 zip
     zip_filename = f"crawl_result_{safe_keyword}_{timestamp}.zip"
     zip_filepath = os.path.join(output_dir, zip_filename)
     with zipfile.ZipFile(zip_filepath, "w", zipfile.ZIP_DEFLATED) as zipf:
-        zipf.write(md_filepath, arcname=md_filename)
-        for root, dirs, files in os.walk(image_dir):
+        for root, _, files in os.walk(temp_dir):
             for file in files:
                 full_path = os.path.join(root, file)
-                arcname = os.path.relpath(full_path, output_dir)
+                arcname = os.path.relpath(full_path, temp_dir)
                 zipf.write(full_path, arcname=arcname)
+
+    # 删除中间临时目录
+    try:
+        import shutil
+        shutil.rmtree(temp_dir)
+    except Exception as e:
+        print(f"[清理失败] {temp_dir}: {e}")
 
     return {
         'results': filtered_results,

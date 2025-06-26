@@ -4,7 +4,9 @@ import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
 import Dashboard from '../views/Dashboard.vue'
 import CrawlFilter from '../views/dashboard/CrawlFilter.vue'
-import DataShowcase from '../views/dashboard/DataShowcase.vue';
+import DataShowcase from '../views/dashboard/DataShowcase.vue'
+import TaskManager from '../views/dashboard/TaskManager.vue'
+import TaskResults from '../views/dashboard/TaskResults.vue'
 
 const routes = [
   { path: '/', component: Home },
@@ -18,6 +20,9 @@ const routes = [
       { path: '', redirect: 'home' }, // 默认跳转到 dashboard/home
       { path: 'crawlFilter', component: CrawlFilter },
       { path: 'dataShowcase', component: DataShowcase },
+      { path: 'task', component: TaskManager },
+      { path: 'task/:id/results', component: TaskResults },
+      { path: 'crawlFilter', component: CrawlFilter },
     ]
   }
 ]

@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'user',
     'crawler',
+    'dashboard',
 ]
 
 MIDDLEWARE = [

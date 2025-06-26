@@ -1,4 +1,5 @@
 from django.contrib import admin
+from crawler.models import CrawlResultShowcase
 from .models import ScrapeTask
 
 
@@ -10,8 +11,7 @@ class ScrapeTaskAdmin(admin.ModelAdmin):
 
 
 @admin.register(CrawlResultShowcase)
-class CrawlResultShowcaseAdmin(admin.ModelAdmin):
-    list_display = ('id', 'keyword', 'url', 'is_approved', 'created_at')
-    search_fields = ('keyword', 'url')
-    list_filter = ('is_approved',)
-    list_editable = ('is_approved',)
+class ShowcaseAdmin(admin.ModelAdmin):
+    list_display = ('keyword', 'url', 'created_at')  # ✅ 删除 is_approved
+    search_fields = ('keyword', 'url', 'content_preview')
+

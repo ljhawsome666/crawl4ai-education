@@ -121,7 +121,6 @@ async def crawl_and_filter(request):
                     url=page.url,
                     keyword=raw_keyword,
                     content_preview=markdown[:500],
-                    is_approved=False,
                 )
 
                 filtered_results.append({
@@ -181,7 +180,7 @@ def download_file(request, filename):
     return response
 
 def list_showcases(request):
-    data = CrawlResultShowcase.objects.filter(is_approved=True).order_by('-created_at')
+    data = CrawlResultShowcase.objects.all().order_by('-created_at')
     result = [{
         'url': item.url,
         'keyword': item.keyword,

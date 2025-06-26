@@ -3,16 +3,23 @@ import Home from '../views/Home.vue'
 import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
 import Dashboard from '../views/Dashboard.vue'
-import CrawlFilter from "@/views/CrawlFilter.vue"
-  import DataShowcase from '@/views/DataShowcase.vue';
+import CrawlFilter from '../views/dashboard/CrawlFilter.vue'
+import DataShowcase from '../views/dashboard/DataShowcase.vue';
 
 const routes = [
   { path: '/', component: Home },
   { path: '/login', component: Login },
   { path: '/register', component: Register },
   { path: '/dashboard', component: Dashboard },
-  { path: '/crawl',component: CrawlFilter},
-  { path: '/data-showcase', name: 'DataShowcase', component: DataShowcase },
+  {
+    path: '/dashboard',
+    component: Dashboard,
+    children: [
+      { path: '', redirect: 'home' }, // 默认跳转到 dashboard/home
+      { path: 'crawlFilter', component: CrawlFilter },
+      { path: 'dataShowcase', component: DataShowcase },
+    ]
+  }
 ]
 
 const router = createRouter({

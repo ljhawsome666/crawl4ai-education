@@ -1,6 +1,6 @@
 <template>
   <div class="p-8 max-w-7xl mx-auto">
-    <h1 class="text-4xl font-extrabold text-center text-blue-700 mb-10">📊 数据广场</h1>
+    <h1 class="text-4xl font-extrabold text-center text-blue-700 mb-10">📊 历史记录</h1>
 
     <div v-if="loading" class="flex justify-center items-center text-gray-500 space-x-3">
       <svg class="animate-spin h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

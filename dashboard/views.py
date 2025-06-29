@@ -1,36 +1,50 @@
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from .models import CrawlTask
-from .serializers import CrawlTaskSerializer
-from threading import Thread
-from crawler.views_crawl import crawl_and_filter_sync  # 👈 你要封装的同步爬虫调用逻辑
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+from crawler.models import CrawlTask
+import json
 
+@csrf_exempt
+def api_create_task(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+            url = data.get("url")
+            raw_keyword = data.get("raw_keyword")
+            max_depth = int(data.get("max_depth", 1))
+            include_external = data.get("include_external", False)
+            strategy = data.get("strategy", "bfs")
 
-class CrawlTaskViewSet(viewsets.ModelViewSet):
-    queryset = CrawlTask.objects.all().order_by('-created_at')
-    serializer_class = CrawlTaskSerializer
+            if not url or not raw_keyword:
+                return JsonResponse({"error": "URL 和关键词是必填项"}, status=400)
 
-    @action(detail=True, methods=['post'])
-    def start(self, request, pk=None):
-        task = self.get_object()
+            task = CrawlTask.objects.create(
+                url=url,
+                keyword=raw_keyword,
+                max_depth=max_depth,
+                include_external=include_external,
+                strategy=strategy,
+                status="未启动"
+            )
+            return JsonResponse({"message": "任务创建成功", "task_id": task.id}, status=201)
 
-        def run_task():
-            try:
-                task.status = 'running'
-                task.save()
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
 
-                # ✅ 调用爬虫逻辑（同步调用，但运行在线程中）
-                crawl_and_filter_sync(task.url, task.keyword)
+    return JsonResponse({"error": "仅支持 POST"}, status=405)
 
-                task.status = 'completed'
-                task.save()
-            except Exception as e:
-                task.status = 'failed'
-                task.save()
-                print(f"任务执行失败: {e}")
-
-        # ✅ 用线程后台运行，不阻塞主线程
-        Thread(target=run_task).start()
-
-        return Response({'message': f'任务 "{task.keyword}" 已启动（后台执行）'})
+def api_list_tasks(request):
+    tasks = CrawlTask.objects.all().order_by('-created_at')  # 最新优先
+    data = [
+        {
+            "id": task.id,
+            "url": task.url,
+            "keyword": task.keyword,
+            "max_depth": task.max_depth,
+            "include_external": task.include_external,
+            "strategy": task.strategy,
+            "status": task.status,
+            "created_at": task.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        for task in tasks
+    ]
+    return JsonResponse(data, safe=False)

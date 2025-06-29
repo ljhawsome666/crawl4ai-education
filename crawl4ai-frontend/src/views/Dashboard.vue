@@ -23,7 +23,7 @@
 <script setup>
 const menuItems = [
   { name: '用户', route: '/dashboard/user' },
-  { name: '新建', route: '/dashboard/crawlFilter' },
+  { name: '新建', route: '/dashboard/createTask' },
   { name: '任务', route: '/dashboard/task' },
   { name: '模板', route: '/dashboard/case' },
   { name: '历史记录', route: '/dashboard/dataShowcase' }

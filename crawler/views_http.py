@@ -15,15 +15,31 @@ def crawl_and_filter(request):
         return JsonResponse({'error': '仅支持POST请求'}, status=405)
     try:
         data = json.loads(request.body)
+
         url = data.get('url')
         keyword = data.get('keyword')
+
+        # 🔧 参数解析 + 默认值设置
+        max_depth = int(data.get('max_depth', 1))
+        include_external = bool(data.get('include_external', False))
+        strategy = data.get('strategy', 'bfs').lower()
+
         if not url or not keyword:
             return JsonResponse({'error': '参数缺失'}, status=400)
 
-        result = async_to_sync(run_crawler)(url, keyword)
+        # ✅ 调用爬虫主函数
+        result = async_to_sync(run_crawler)(
+            url, keyword,
+            max_depth=max_depth,
+            include_external=include_external,
+            strategy=strategy
+        )
+
         return JsonResponse(result)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
 
 
 def download_file(request, filename):

@@ -1,54 +1,55 @@
 <template>
-  <div>
+  <div class="task-manager">
     <h2>任务管理</h2>
 
-    <!-- 创建任务表单 -->
-    <form @submit.prevent="createTask" class="task-form">
-      <input v-model="newUrl" type="url" placeholder="请输入 URL" required />
-      <input v-model="newKeyword" type="text" placeholder="请输入关键词" required />
-      <button type="submit">创建任务</button>
-    </form>
-
-    <!-- 任务列表 -->
     <table class="task-table">
       <thead>
         <tr>
-          <th>ID</th>
-          <th>URL</th>
+          <th>网址</th>
           <th>关键词</th>
+          <th>深度</th>
+          <th>策略</th>
+          <th>包含外链</th>
           <th>状态</th>
+          <th>进度</th>
           <th>操作</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="task in tasks" :key="task.id">
-          <td>{{ task.id }}</td>
-          <td>{{ task.url }}</td>
-          <td>{{ task.keyword }}</td>
+          <td>
+            <input v-model="task.url" />
+          </td>
+          <td>
+            <input v-model="task.keyword" />
+          </td>
+          <td>
+            <input v-model.number="task.max_depth" type="number" min="1" />
+          </td>
+          <td>
+            <select v-model="task.strategy">
+              <option value="bfs">BFS</option>
+              <option value="dfs">DFS</option>
+              <option value="bestfirst">智能优先</option>
+            </select>
+          </td>
+          <td>
+            <input type="checkbox" v-model="task.include_external" />
+          </td>
           <td>{{ task.status }}</td>
           <td>
-            <button @click="editTask(task)">编辑</button>
-            <button v-if="task.status !== 'completed'" @click="startTask(task)">启动</button>
-            <router-link v-if="task.status === 'completed'" :to="`/dashboard/task/${task.id}/results`">查看结果</router-link>
+            <div v-if="task.status === 'running'">
+              {{ task.progress }}%
+            </div>
+            <div v-else>-</div>
+          </td>
+          <td>
+            <button @click="updateTask(task)">保存</button>
+            <button @click="startTask(task)" :disabled="task.status !== 'pending'">启动</button>
           </td>
         </tr>
       </tbody>
     </table>
-
-    <!-- 编辑弹窗 -->
-    <div v-if="editingTask" class="modal-overlay">
-      <div class="modal">
-        <h3>编辑任务</h3>
-        <form @submit.prevent="saveEdit">
-          <label>URL：</label>
-          <input v-model="editingTask.url" type="url" required /><br />
-          <label>关键词：</label>
-          <input v-model="editingTask.keyword" type="text" required /><br /><br />
-          <button type="submit">保存</button>
-          <button type="button" @click="cancelEdit">取消</button>
-        </form>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -56,88 +57,57 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 
-const newUrl = ref('')
-const newKeyword = ref('')
 const tasks = ref([])
-const editingTask = ref(null)
 
 const fetchTasks = async () => {
-  const res = await axios.get('/api/tasks/')
-  tasks.value = res.data
+  const response = await axios.get('http://localhost:8000/api/tasks/')
+
+  if (Array.isArray(response.data)) {
+    tasks.value = response.data.map(task => ({...task, progress: 0}))
+  } else {
+    console.error('任务接口返回的数据不是数组：', response.data)
+  tasks.value = []
+  }
 }
 
-// ✅ 只保存任务，不启动爬取
-const createTask = async () => {
-  await axios.post('/api/tasks/', {
-    url: newUrl.value,
-    keyword: newKeyword.value,
-    status: 'pending'
-  })
-  newUrl.value = ''
-  newKeyword.value = ''
-  await fetchTasks()
+const updateTask = async (task) => {
+  await axios.put(`/api/tasks/${task.id}/`, task)
+  alert("任务更新成功")
 }
 
-// ✅ 编辑任务
-const editTask = (task) => {
-  editingTask.value = { ...task }
-}
-const saveEdit = async () => {
-  await axios.put(`/api/tasks/${editingTask.value.id}/`, {
-    url: editingTask.value.url,
-    keyword: editingTask.value.keyword
-  })
-  editingTask.value = null
-  await fetchTasks()
-}
-const cancelEdit = () => {
-  editingTask.value = null
-}
-
-// ✅ 启动任务（调用爬虫接口）
 const startTask = async (task) => {
-  await axios.post('/api/crawl-filter/', {
-    url: task.url,
-    keyword: task.keyword
-  })
-  alert('任务已启动并执行完成')
-  await fetchTasks()
+  task.status = 'running'
+  await axios.post(`/api/tasks/${task.id}/start/`)
+  pollProgress(task)
 }
 
-onMounted(() => {
-  fetchTasks()
-})
+const pollProgress = (task) => {
+  const interval = setInterval(async () => {
+    const response = await axios.get(`/api/tasks/${task.id}/progress/`)
+    task.progress = response.data.progress
+    task.status = response.data.status
+    if (task.status !== 'running') {
+      clearInterval(interval)
+    }
+  }, 2000)
+}
+
+onMounted(fetchTasks)
 </script>
 
 <style scoped>
-.task-form {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
+.task-manager {
+  padding: 20px;
 }
-.task-form input {
-  flex: 1;
-  padding: 6px;
-}
+
 .task-table {
   width: 100%;
   border-collapse: collapse;
 }
-.task-table th, .task-table td {
-  border: 1px solid #ccc;
+
+.task-table th,
+.task-table td {
+  border: 1px solid #ddd;
   padding: 8px;
-}
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0,0,0,0.4);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-.modal {
-  background-color: #fff;
-  padding: 20px;
-  border-radius: 8px;
 }
 </style>

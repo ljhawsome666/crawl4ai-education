@@ -1,17 +1,23 @@
 import os
-import re
 import requests
 import zipfile
 from datetime import datetime
 from django.conf import settings
 from django.utils.text import slugify
-from bs4 import BeautifulSoup
-from bs4.element import NavigableString, Tag
-from crawl4ai import AsyncWebCrawler
+from bs4 import BeautifulSoup, NavigableString, Tag
 from crawler.models import CrawlResultShowcase
 from asgiref.sync import sync_to_async
 
-# ✅ Markdown 转换函数
+from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
+from crawl4ai.deep_crawling import BFSDeepCrawlStrategy, DFSDeepCrawlStrategy, BestFirstCrawlingStrategy
+from crawl4ai.content_filter_strategy import LLMContentFilter
+from crawl4ai import LLMConfig
+from crawl4ai.deep_crawling.scorers import KeywordRelevanceScorer
+from crawl4ai.content_scraping_strategy import WebScrapingStrategy
+from crawl4ai.extraction_strategy import LLMExtractionStrategy
+
+
+# ---------- Markdown 转换函数 ----------
 def html_to_markdown(element):
     if isinstance(element, NavigableString):
         return element.strip()
@@ -50,7 +56,7 @@ def html_to_markdown(element):
         return "\n" + "\n".join("> " + line for line in content.splitlines()) + "\n\n"
     return ''.join(html_to_markdown(c) for c in element.children)
 
-# ✅ 图片与关键词相关性判断
+# ---------- 图片与关键词相关性判断 ----------
 def is_image_relevant(img: Tag, keywords: list) -> bool:
     def text_contains_kw(text):
         return text and any(kw in text.lower() for kw in keywords)
@@ -73,14 +79,83 @@ def is_image_relevant(img: Tag, keywords: list) -> bool:
 
     return False
 
-# ✅ 主函数
-async def run_crawler(url: str, raw_keyword: str):
+
+# ---------- 主函数（整合版） ----------
+async def run_crawler(
+    url: str,
+    raw_keyword: str,
+    max_depth: int = 1,
+    include_external: bool = False,
+    strategy: str = 'bfs'
+):
     keywords = [kw.strip().lower() for kw in raw_keyword.replace('，', ',').split(',') if kw.strip()]
     if not keywords:
         return {'results': [], 'filename': '', 'download_url': ''}
 
-    crawler = AsyncWebCrawler()
-    results = await crawler.arun(url=url, max_pages=10)
+    strategy = strategy.lower()
+    if strategy == 'dfs':
+        deep_strategy = DFSDeepCrawlStrategy(max_depth=max_depth, include_external=include_external, max_pages=30)
+    elif strategy == 'bestfirst':
+        scorer = KeywordRelevanceScorer(keywords=keywords, weight=0.7)
+        deep_strategy = BestFirstCrawlingStrategy(max_depth=max_depth, include_external=include_external, url_scorer=scorer, max_pages=30)
+    else:
+        deep_strategy = BFSDeepCrawlStrategy(max_depth=max_depth, include_external=include_external, max_pages=30)
+
+    browser_cfg = BrowserConfig(
+        browser_type="chromium",
+        headless=True,
+        user_agent_mode="random",
+        text_mode=True,
+        proxy=None,
+        verbose=True,
+        extra_args=["--no-sandbox", "--disable-setuid-sandbox"],
+    )
+
+    # LLM 筛选器配置
+    instruction = f"""
+请根据以下关键词筛选网页内容，保留与关键词相关的段落：
+关键词：{', '.join(keywords)}。
+请以 Markdown 格式输出相关内容。
+"""
+    llm_config = LLMConfig(
+        provider="openai/gpt-4o-mini",
+        api_token=os.getenv("OPENAI_API_KEY")
+    )
+
+    llm_filter = LLMContentFilter(
+        llm_config=llm_config,
+        instruction=instruction,
+        verbose=True,
+    )
+
+    import logging
+    logger = logging.getLogger("LLMExtractionStrategy")
+    logger.setLevel(logging.INFO)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    ch.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+    logger.addHandler(ch)
+
+    llm_extraction = LLMExtractionStrategy(
+        llm_provider="openai/gpt-4o-mini",
+        template="education",
+        verbose=True
+    )
+    llm_extraction.logger = logger
+
+    run_cfg = CrawlerRunConfig(
+        deep_crawl_strategy=deep_strategy,
+        scraping_strategy=llm_extraction,
+        verbose=True,
+        stream=False,
+        exclude_external_links=not include_external,
+        cache_mode=CacheMode.ENABLED,
+        wait_until="domcontentloaded",
+        wait_for=None
+    )
+
+    crawler = AsyncWebCrawler(config=browser_cfg)
+    results = await crawler.arun(url=url, config=run_cfg)
 
     filtered_results = []
     output_dir = os.path.join(settings.BASE_DIR, "output_files")
@@ -94,8 +169,7 @@ async def run_crawler(url: str, raw_keyword: str):
     image_dir = os.path.join(temp_dir, "images")
     os.makedirs(image_dir, exist_ok=True)
 
-    md_filename = "result.md"
-    md_filepath = os.path.join(temp_dir, md_filename)
+    md_filepath = os.path.join(temp_dir, "result.md")
 
     with open(md_filepath, "w", encoding="utf-8") as f:
         for page in results:
@@ -104,17 +178,29 @@ async def run_crawler(url: str, raw_keyword: str):
                 continue
 
             soup = BeautifulSoup(html, "html.parser")
-            paragraphs = soup.find_all(['p', 'li', 'blockquote'])
+
+            # ✅ 清除导航等干扰结构
+            for tag in soup.select("nav, .menu, .header, .footer, .sidebar"):
+                tag.decompose()
+
+            # ✅ 限定正文区域
+            article_root = soup.select_one("#main, .article, .content, #content")
+            if not article_root:
+                article_root = soup
+
+            paragraphs = article_root.find_all(['p', 'li', 'blockquote'])
 
             matched_sections = []
             image_markdown_lines = []
 
             for para in paragraphs:
                 text = para.get_text(strip=True)
-                if any(kw in text.lower() for kw in keywords):
+                if not text or len(text) < 20:
+                    continue
+                if sum(kw in text.lower() for kw in keywords) >= 1:
                     matched_sections.append(html_to_markdown(para))
 
-            # 图片处理
+            # ✅ 相关图片判断
             img_tags = soup.find_all("img")
             for idx, img in enumerate(img_tags):
                 img_url = img.get("src")
@@ -171,7 +257,7 @@ async def run_crawler(url: str, raw_keyword: str):
                     "markdown": markdown[:10000]
                 })
 
-    # 打包为 zip
+    # ✅ 打包 Markdown 与图片为 ZIP
     zip_filename = f"crawl_result_{safe_keyword}_{timestamp}.zip"
     zip_filepath = os.path.join(output_dir, zip_filename)
     with zipfile.ZipFile(zip_filepath, "w", zipfile.ZIP_DEFLATED) as zipf:
@@ -181,7 +267,7 @@ async def run_crawler(url: str, raw_keyword: str):
                 arcname = os.path.relpath(full_path, temp_dir)
                 zipf.write(full_path, arcname=arcname)
 
-    # 删除中间临时目录
+    # 清理临时目录
     try:
         import shutil
         shutil.rmtree(temp_dir)
@@ -193,3 +279,4 @@ async def run_crawler(url: str, raw_keyword: str):
         'filename': zip_filename,
         'download_url': f"/api/download/{zip_filename}"
     }
+

@@ -7,6 +7,7 @@ import CrawlFilter from '../views/dashboard/CrawlFilter.vue'
 import DataShowcase from '../views/dashboard/DataShowcase.vue'
 import TaskManager from '../views/dashboard/TaskManager.vue'
 import TaskResults from '../views/dashboard/TaskResults.vue'
+import CreateTask from "@/views/dashboard/CreateTask.vue";
 
 const routes = [
   { path: '/', component: Home },
@@ -22,7 +23,7 @@ const routes = [
       { path: 'dataShowcase', component: DataShowcase },
       { path: 'task', component: TaskManager },
       { path: 'task/:id/results', component: TaskResults },
-      { path: 'crawlFilter', component: CrawlFilter },
+      { path: 'createTask', component: CreateTask },
     ]
   }
 ]

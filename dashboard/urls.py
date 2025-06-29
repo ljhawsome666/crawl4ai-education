@@ -1,10 +1,8 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import CrawlTaskViewSet
-
-router = DefaultRouter()
-router.register(r'', CrawlTaskViewSet, basename='task')
+from django.urls import path
+from .views import api_create_task
+from .views import api_list_tasks
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path('create-task/', api_create_task),
+    path("tasks/", api_list_tasks),
 ]

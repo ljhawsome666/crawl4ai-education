@@ -61,6 +61,60 @@
           </p>
         </div>
 
+        <div>
+          <label for="depth" class="flex items-center gap-2 font-semibold text-blue-700 mb-2">
+            <i class="fas fa-layer-group"></i> 爬取深度（max_depth）
+          </label>
+          <div class="relative">
+            <input
+              id="depth"
+              v-model.number="maxDepth"
+              type="number"
+              min="1"
+              max="5"
+              placeholder="默认为 1"
+              class="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 transition"
+            />
+            <i class="fas fa-arrows-alt-v absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+          </div>
+          <p class="mt-1 text-sm text-gray-400 select-text">
+            控制爬虫爬取链接的深度，建议不超过 3 层
+          </p>
+        </div>
+
+        <div>
+          <label class="flex items-center gap-2 font-semibold text-blue-700 mb-2">
+            <i class="fas fa-external-link-alt"></i> 允许爬取外部链接
+          </label>
+          <div class="flex items-center space-x-4">
+            <label class="inline-flex items-center">
+              <input type="checkbox" v-model="includeExternal" class="form-checkbox h-5 w-5 text-blue-600" />
+              <span class="ml-2 text-gray-700">启用</span>
+            </label>
+          </div>
+          <p class="mt-1 text-sm text-gray-400 select-text">
+            是否允许爬取与起始 URL 不同域名的网页（跨站）
+          </p>
+        </div>
+
+        <div>
+          <label class="flex items-center gap-2 font-semibold text-blue-700 mb-2">
+            <i class="fas fa-project-diagram"></i> 选择爬取策略
+          </label>
+          <select
+            v-model="crawlStrategy"
+            class="w-full py-3 px-4 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-300 transition"
+          >
+            <option value="bfs">广度优先（BFS）</option>
+            <option value="dfs">深度优先（DFS）</option>
+            <option value="best">优先级优先（BestFirst）</option>
+          </select>
+          <p class="mt-1 text-sm text-gray-400 select-text">
+            可选策略包括 BFS、DFS 和智能优先爬取 BestFirst（推荐）
+          </p>
+        </div>
+
+
         <!-- 按钮 -->
         <button
           @click="crawl"
@@ -123,6 +177,9 @@ import 'katex/dist/katex.min.css'
 
 const url = ref('')
 const keyword = ref('')
+const maxDepth = ref(1)
+const includeExternal = ref(false)
+const crawlStrategy = ref('bfs')
 const results = ref([])
 const filename = ref('')
 const error = ref('')
@@ -194,7 +251,13 @@ const crawl = async () => {
     const response = await fetch('http://localhost:8000/api/crawl-filter/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: url.value, keyword: keyword.value }),
+      body: JSON.stringify({
+        url: url.value,
+        keyword: keyword.value,
+        max_depth: maxDepth.value || 1,
+        include_external: includeExternal.value,
+        strategy: crawlStrategy.value,  // 'bfs' / 'dfs' / 'best'
+      }),
     })
 
     const data = await response.json()

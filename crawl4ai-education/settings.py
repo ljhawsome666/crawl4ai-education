@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'user',
     'crawler',
     'dashboard',
+    'crawl_templates',
 ]
 
 MIDDLEWARE = [
@@ -75,6 +76,12 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'crawl4ai-education.wsgi.application'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    )
+}
 # CORS 设置（允许前端访问）
 CORS_ALLOW_ALL_ORIGINS = True
 

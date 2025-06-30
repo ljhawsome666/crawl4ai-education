@@ -7,7 +7,9 @@ import CrawlFilter from '../views/dashboard/CrawlFilter.vue'
 import DataShowcase from '../views/dashboard/DataShowcase.vue'
 import TaskManager from '../views/dashboard/TaskManager.vue'
 import TaskResults from '../views/dashboard/TaskResults.vue'
-import CreateTask from "@/views/dashboard/CreateTask.vue";
+import CreateTask from "@/views/dashboard/CreateTask.vue"
+import CrawlTemplate from '@/views/dashboard/CrawlTemplate.vue'
+import User from '../views/dashboard/User.vue';
 
 const routes = [
   { path: '/', component: Home },
@@ -24,6 +26,8 @@ const routes = [
       { path: 'task', component: TaskManager },
       { path: 'task/:id/results', component: TaskResults },
       { path: 'createTask', component: CreateTask },
+      { path: 'case',component: CrawlTemplate },
+      { path: 'user',component: User },
     ]
   }
 ]

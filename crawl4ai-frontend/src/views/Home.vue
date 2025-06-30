@@ -24,37 +24,35 @@
     <!-- 主体内容 -->
     <el-main class="main-content">
       <div class="hero-section">
-        <h1 class="title">专业级网络数据采集平台</h1>
-        <p class="subtitle">提供高效、稳定、智能的网络爬虫解决方案，助力您的数据驱动业务</p>
+        <div class="hero-content">
+          <h1 class="title">专业级网络数据采集平台</h1>
+          <p class="subtitle">提供高效、稳定、智能的网络爬虫解决方案，助力您的数据驱动业务</p>
 
-        <div class="action-buttons">
-          <el-button
-            type="primary"
-            @click="goLogin"
-            size="large"
-            class="action-button"
-          >
-            <span class="button-content">
-              <el-icon><User /></el-icon>
-              立即开始
-            </span>
-          </el-button>
+          <div class="action-buttons">
+            <el-button
+              type="primary"
+              @click="goLogin"
+              size="large"
+              class="action-button"
+            >
+              <span class="button-content">
+                <el-icon><User /></el-icon>
+                立即开始
+              </span>
+            </el-button>
 
-          <el-button
-            type="info"
-            size="large"
-            class="action-button"
-            plain
-          >
-            <span class="button-content">
-              <el-icon><VideoPlay /></el-icon>
-              观看演示
-            </span>
-          </el-button>
-        </div>
-
-        <div class="preview-image">
-          <img src="https://via.placeholder.com/800x450?text=Dashboard+Preview" alt="平台预览">
+            <el-button
+              type="info"
+              size="large"
+              class="action-button"
+              plain
+            >
+              <span class="button-content">
+                <el-icon><VideoPlay /></el-icon>
+                观看演示
+              </span>
+            </el-button>
+          </div>
         </div>
       </div>
 
@@ -117,7 +115,7 @@
         <h2 class="section-title">应用场景</h2>
         <p class="section-subtitle">我们的解决方案适用于各种行业需求</p>
 
-        <el-carousel :interval="4000" type="card" height="300px">
+        <el-carousel :interval="4000" type="card" height="400px">
           <el-carousel-item v-for="item in useCases" :key="item.title">
             <div class="case-card">
               <h3>{{ item.title }}</h3>
@@ -155,7 +153,7 @@
 
         <div class="footer-section">
           <h4>联系我们</h4>
-          <p><el-icon><Message /></el-icon> support@spider.com</p>
+          <p><el-icon><Message /></el-icon> kalve089@gmail.com</p>
           <p><el-icon><Iphone /></el-icon> 400-123-4567</p>
           <div class="social-links">
             <el-icon :size="24"><ChatDotRound /></el-icon>
@@ -166,7 +164,7 @@
       </div>
 
       <div class="copyright">
-        <p>© 2023 数据爬虫平台 版权所有 | 隐私政策 | 服务条款</p>
+        <p>© 2025 数据爬虫平台 版权所有 | 隐私政策 | 服务条款</p>
       </div>
     </el-footer>
   </div>
@@ -220,36 +218,58 @@ const useCases = ref([
 </script>
 
 <style scoped>
-.page-container {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  background-color: #f8f9fa;
+/* 基础样式重置 */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
+/* 主容器 - 添加渐变背景 */
+.page-container {
+  background: linear-gradient(135deg,
+    #56ccf2 0%,
+    #2f80ed 50%,
+    #1fa2ff 100%);
+  background-attachment: fixed;
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  aspect-ratio: 16/9;
+  overflow: auto;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+/* 头部样式 */
 .header {
-  background-color: white;
+  background-color: rgba(255, 255, 255, 0.95);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  height: 60px;
+  height: 80px;
   display: flex;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .header-content {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 20px;
+  padding: 0 40px;
 }
 
 .logo {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 1.2rem;
+  gap: 12px;
+  font-size: 1.4rem;
   font-weight: bold;
   color: #333;
 }
@@ -262,7 +282,7 @@ const useCases = ref([
 
 .nav-links {
   display: flex;
-  gap: 30px;
+  gap: 20px;
 }
 
 .user-actions {
@@ -270,45 +290,54 @@ const useCases = ref([
   gap: 10px;
 }
 
+/* 主体内容 */
 .main-content {
   flex: 1;
   padding: 0;
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.85);
 }
 
+/* 英雄区域 - 减少底部padding */
 .hero-section {
-  max-width: 1200px;
-  margin: 40px auto;
-  text-align: center;
-  padding: 60px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 100px 40px 30px; /* 底部padding从60px减少到30px */
+  min-height: calc(100% - 80px - 30px); /* 同步调整 */
+  box-sizing: border-box;
+  flex-grow: 1;
+  background: transparent;
 }
 
 .title {
-  font-size: 2.8rem;
-  color: #333;
-  margin-bottom: 16px;
+  font-size: 3.2rem;
+  color: #2c3e50;
+  margin-bottom: 24px;
   font-weight: 600;
   line-height: 1.2;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .subtitle {
-  font-size: 1.3rem;
-  color: #666;
-  margin-bottom: 40px;
-  max-width: 700px;
-  margin-left: auto;
-  margin-right: auto;
+  font-size: 1.4rem;
+  color: #34495e;
+  margin-bottom: 50px;
+  line-height: 1.6;
 }
 
 .action-buttons {
   display: flex;
   justify-content: center;
-  gap: 20px;
-  margin-top: 30px;
+  gap: 30px;
+  margin-top: 40px;
 }
 
 .action-button {
-  padding: 15px 30px;
-  font-size: 1.1rem;
+  padding: 18px 36px;
+  font-size: 1.2rem;
   transition: all 0.3s ease;
 }
 
@@ -320,173 +349,204 @@ const useCases = ref([
 .button-content {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
-.preview-image {
-  margin-top: 60px;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
-}
-
-.preview-image img {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
+/* 核心功能区域 - 减少上边距 */
 .features-section {
-  max-width: 1200px;
-  margin: 80px auto;
-  padding: 0 20px;
+  max-width: 1400px;
+  margin: 30px auto 0; /* 上边距从60px减少到30px */
+  padding: 0 40px;
   text-align: center;
+  background: transparent;
 }
 
 .section-title {
-  font-size: 2rem;
-  color: #333;
-  margin-bottom: 16px;
+  font-size: 2.4rem;
+  color: #2c3e50;
+  margin-bottom: 20px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .section-subtitle {
-  font-size: 1.1rem;
-  color: #666;
-  margin-bottom: 50px;
+  font-size: 1.2rem;
+  color: #34495e;
+  margin-bottom: 30px; /* 从60px减少到30px */
 }
 
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 30px;
-  margin-top: 40px;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 40px;
+  margin-top: 30px; /* 可选：减少网格上边距 */
 }
 
 .feature-card {
-  background: white;
-  padding: 40px 30px;
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(5px);
+  padding: 50px 40px;
+  border-radius: 16px;
   text-align: center;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
   transition: all 0.3s ease;
 }
 
 .feature-card:hover {
   transform: translateY(-10px);
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
 }
 
 .feature-icon {
-  margin-bottom: 20px;
+  margin-bottom: 25px;
 }
 
 .feature-card h3 {
-  margin: 0 0 15px;
+  margin: 0 0 20px;
   color: #333;
-  font-size: 1.3rem;
+  font-size: 1.5rem;
 }
 
 .feature-card p {
   color: #666;
-  font-size: 1rem;
+  font-size: 1.1rem;
   line-height: 1.6;
 }
 
+/* 应用场景区域 */
 .use-cases-section {
-  max-width: 1200px;
-  margin: 80px auto;
-  padding: 0 20px;
+  max-width: 1400px;
+  margin: 100px auto;
+  padding: 0 40px;
   text-align: center;
+  background: transparent;
 }
 
 .case-card {
   height: 100%;
-  background: white;
-  padding: 30px;
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(5px);
+  padding: 40px;
+  border-radius: 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
 }
 
 .case-card h3 {
-  font-size: 1.5rem;
-  margin-bottom: 15px;
+  font-size: 1.8rem;
+  margin-bottom: 20px;
   color: #333;
 }
 
 .case-card p {
   color: #666;
-  margin-bottom: 20px;
+  margin-bottom: 30px;
+  font-size: 1.1rem;
+  line-height: 1.6;
 }
 
+/* 页脚 */
 .footer {
   background-color: #2c3e50;
   color: white;
-  padding: 60px 0 0;
+  padding: 80px 0 0;
+  flex-shrink: 0;
 }
 
 .footer-content {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 40px;
-  padding: 0 20px;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 50px;
+  padding: 0 40px;
 }
 
 .footer-section {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 20px;
 }
 
 .footer-section h4 {
-  font-size: 1.2rem;
-  margin-bottom: 10px;
+  font-size: 1.3rem;
+  margin-bottom: 15px;
   color: #fff;
 }
 
 .footer-section p {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   color: #bdc3c7;
-  margin: 5px 0;
+  margin: 8px 0;
+  font-size: 1.05rem;
 }
 
 .social-links {
   display: flex;
-  gap: 15px;
-  margin-top: 15px;
+  gap: 20px;
+  margin-top: 20px;
 }
 
 .copyright {
   text-align: center;
-  padding: 20px;
-  margin-top: 40px;
+  padding: 30px;
+  margin-top: 60px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   color: #bdc3c7;
-  font-size: 0.9rem;
+  font-size: 1rem;
 }
 
-@media (max-width: 768px) {
-  .header-content {
-    flex-direction: column;
-    height: auto;
-    padding: 15px;
-  }
-
-  .nav-links {
-    margin: 15px 0;
-    flex-wrap: wrap;
-    justify-content: center;
+/* 响应式适配 */
+@media (max-width: 1200px) {
+  .header-content,
+  .hero-section,
+  .features-section,
+  .use-cases-section,
+  .footer-content {
+    padding-left: 30px;
+    padding-right: 30px;
   }
 
   .title {
-    font-size: 2rem;
+    font-size: 2.8rem;
+  }
+
+  .features-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .page-container {
+    background: linear-gradient(135deg,
+      #56ccf2 0%,
+      #2f80ed 70%,
+      #1fa2ff 100%);
+  }
+
+  .main-content {
+    background: rgba(255, 255, 255, 0.92);
+  }
+
+  .header-content {
+    flex-direction: column;
+    height: auto;
+    padding: 20px;
+  }
+
+  .nav-links {
+    margin: 20px 0;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+  }
+
+  .title {
+    font-size: 2.2rem;
   }
 
   .subtitle {
@@ -500,6 +560,51 @@ const useCases = ref([
 
   .features-grid {
     grid-template-columns: 1fr;
+  }
+
+  .hero-section {
+    padding: 80px 20px 20px; /* 移动端减少底部padding */
+    height: auto;
+    min-height: auto;
+  }
+
+  .features-section {
+    margin: 20px auto 0; /* 移动端进一步减少上边距 */
+  }
+
+  .section-subtitle {
+    margin-bottom: 20px; /* 移动端减少下边距 */
+  }
+
+  .feature-card,
+  .case-card {
+    padding: 30px 20px;
+  }
+
+  .footer-content {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-section {
+    padding: 60px 15px 15px; /* 小屏幕进一步减少 */
+  }
+
+  .features-section {
+    margin: 15px auto 0;
+  }
+
+  .footer-content {
+    grid-template-columns: 1fr;
+  }
+
+  .title {
+    font-size: 1.8rem;
+  }
+
+  .section-title {
+    font-size: 1.8rem;
   }
 }
 </style>

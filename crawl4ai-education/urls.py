@@ -8,6 +8,7 @@ urlpatterns = [
     path('api/user/', include('user.urls')),
     path('api/', include('crawler.urls')),
     path('api/', include('dashboard.urls')),
+    path('', include('crawl_templates.urls')),
 ]
 
 if settings.DEBUG:

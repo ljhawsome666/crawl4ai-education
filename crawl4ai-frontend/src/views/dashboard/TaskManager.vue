@@ -17,25 +17,17 @@
       </thead>
       <tbody>
         <tr v-for="task in tasks" :key="task.id">
+          <td><input v-model="task.url" :disabled="task.status === 'running'" /></td>
+          <td><input v-model="task.keyword" :disabled="task.status === 'running'" /></td>
+          <td><input v-model.number="task.max_depth" type="number" min="1" :disabled="task.status === 'running'" /></td>
           <td>
-            <input v-model="task.url" />
-          </td>
-          <td>
-            <input v-model="task.keyword" />
-          </td>
-          <td>
-            <input v-model.number="task.max_depth" type="number" min="1" />
-          </td>
-          <td>
-            <select v-model="task.strategy">
+            <select v-model="task.strategy" :disabled="task.status === 'running'">
               <option value="bfs">BFS</option>
               <option value="dfs">DFS</option>
               <option value="bestfirst">智能优先</option>
             </select>
           </td>
-          <td>
-            <input type="checkbox" v-model="task.include_external" />
-          </td>
+          <td><input type="checkbox" v-model="task.include_external" :disabled="task.status === 'running'" /></td>
           <td>{{ task.status }}</td>
           <td>
             <div v-if="task.status === 'running'">
@@ -44,8 +36,11 @@
             <div v-else>-</div>
           </td>
           <td>
-            <button @click="updateTask(task)">保存</button>
-            <button @click="startTask(task)" :disabled="task.status !== 'pending'">启动</button>
+            <button @click="updateTask(task)" :disabled="task.status === 'running' || task.isStarting">保存</button>
+            <button @click="startTask(task)" :disabled="task.status !== 'pending' || task.isStarting">
+              <span v-if="task.isStarting">启动中...</span>
+              <span v-else>启动</span>
+            </button>
           </td>
         </tr>
       </tbody>
@@ -58,38 +53,79 @@ import { ref, onMounted } from 'vue'
 import axios from 'axios'
 
 const tasks = ref([])
+const pollingTimers = {}
 
 const fetchTasks = async () => {
-  const response = await axios.get('http://localhost:8000/api/tasks/')
-
-  if (Array.isArray(response.data)) {
-    tasks.value = response.data.map(task => ({...task, progress: 0}))
-  } else {
-    console.error('任务接口返回的数据不是数组：', response.data)
-  tasks.value = []
+  try {
+    const response = await axios.get('http://127.0.0.1:8000/api/tasks/', { timeout: 5000 })
+    if (Array.isArray(response.data)) {
+      tasks.value = response.data.map(task => ({
+        ...task,
+        progress: 0,
+        isStarting: false
+      }))
+    } else {
+      console.error('任务接口返回的数据不是数组：', response.data)
+      tasks.value = []
+    }
+  } catch (e) {
+    console.error('获取任务失败:', e)
   }
 }
 
 const updateTask = async (task) => {
-  await axios.put(`/api/tasks/${task.id}/`, task)
-  alert("任务更新成功")
+  try {
+    await axios.put(`http://127.0.0.1:8000/api/tasks/${task.id}/`, task)
+    alert("任务更新成功")
+  } catch (e) {
+    alert("任务更新失败: " + (e.response?.data?.error || e.message))
+  }
 }
+
 
 const startTask = async (task) => {
-  task.status = 'running'
-  await axios.post(`/api/tasks/${task.id}/start/`)
-  pollProgress(task)
+  if (task.isStarting || task.status !== 'pending') return
+  task.isStarting = true
+
+  try {
+    // 触发后端启动任务，通常只需要task.id即可，参数都存在数据库里
+    await axios.post(`http://127.0.0.1:8000/api/tasks/${task.id}/start/`, null, { timeout: 10000 })
+
+    task.status = 'running'
+    task.progress = 0
+
+    // 启动后马上请求一次进度，提升体验
+    await pollProgress(task)
+
+    // 清理已有定时器，避免重复
+    if (pollingTimers[task.id]) clearInterval(pollingTimers[task.id])
+    pollingTimers[task.id] = setInterval(() => pollProgress(task), 2000)
+
+  } catch (e) {
+    alert("启动任务失败: " + (e.response?.data?.detail || e.message))
+  } finally {
+    task.isStarting = false
+  }
 }
 
-const pollProgress = (task) => {
-  const interval = setInterval(async () => {
-    const response = await axios.get(`/api/tasks/${task.id}/progress/`)
-    task.progress = response.data.progress
-    task.status = response.data.status
-    if (task.status !== 'running') {
-      clearInterval(interval)
+const pollProgress = async (task) => {
+  try {
+    const response = await axios.get(`http://127.0.0.1:8000/api/tasks/${task.id}/progress/`, { timeout: 5000 })
+    const data = response.data
+    if (typeof data.progress === 'number') task.progress = data.progress
+    if (typeof data.status === 'string') task.status = data.status
+
+    if (task.status !== 'running' && pollingTimers[task.id]) {
+      clearInterval(pollingTimers[task.id])
+      delete pollingTimers[task.id]
     }
-  }, 2000)
+  } catch (e) {
+    console.error("查询任务进度失败", e)
+    if (pollingTimers[task.id]) {
+      clearInterval(pollingTimers[task.id])
+      delete pollingTimers[task.id]
+    }
+  }
 }
 
 onMounted(fetchTasks)

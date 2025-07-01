@@ -9,7 +9,14 @@ def template_list(request):
         {
             'name': t.name,
             'category': t.category,
-            'method': t.method
+            'method': t.method,
+
+            # 新增以下字段
+            'url': t.url,
+            'raw_keyword': t.keywords,
+            'max_depth': t.max_depth,
+            'include_external': t.include_external,
+            'strategy': t.strategy
         }
         for t in templates
     ]

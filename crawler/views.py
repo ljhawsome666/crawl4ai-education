@@ -96,7 +96,7 @@ async def run_crawler(
     if not keywords:
         return {'results': [], 'filename': '', 'download_url': ''}
 
-    # ✅ 根据策略选择 deep_crawl_strategy
+    # 选择爬取策略
     strategy = strategy.lower()
     if strategy == 'dfs':
         deep_strategy = DFSDeepCrawlStrategy(
@@ -105,29 +105,26 @@ async def run_crawler(
             max_pages=30
         )
     elif strategy == 'bestfirst':
-        scorer = KeywordRelevanceScorer(
-            keywords=keywords,
-            weight=0.7
-        )
+        scorer = KeywordRelevanceScorer(keywords=keywords, weight=0.7)
         deep_strategy = BestFirstCrawlingStrategy(
             max_depth=max_depth,
             include_external=include_external,
             url_scorer=scorer,
             max_pages=30
         )
-    else:  # 默认使用 bfs
+    else:
         deep_strategy = BFSDeepCrawlStrategy(
             max_depth=max_depth,
             include_external=include_external,
             max_pages=30
         )
 
-
+    # 浏览器配置
     browser_cfg = BrowserConfig(
         browser_type="chromium",
         headless=True,
         user_agent_mode="random",
-        text_mode=True,  # ✅ 让系统返回 HTML + 文本抽取后的 cleaned_html
+        text_mode=True,
         verbose=True
     )
 
@@ -135,11 +132,12 @@ async def run_crawler(
 
     config = CrawlerRunConfig(
         deep_crawl_strategy=deep_strategy,
-        scraping_strategy=LXMLWebScrapingStrategy(),  # 或者你的其他策略
+        scraping_strategy=LXMLWebScrapingStrategy(),
         verbose=True,
         stream=False,
     )
 
+    # 启动爬虫
     results = await crawler.arun(url=url, config=config)
 
     filtered_results = []
@@ -156,6 +154,9 @@ async def run_crawler(
 
     md_filename = "result.md"
     md_filepath = os.path.join(temp_dir, md_filename)
+
+    full_markdown = ""
+    first_match_url = ""
 
     with open(md_filepath, "w", encoding="utf-8") as f:
         for page in results:
@@ -212,28 +213,36 @@ async def run_crawler(
                     print(f"[图片下载失败] {img_url}: {e}")
 
             if matched_sections or image_markdown_lines:
-                markdown = '\n'.join(matched_sections)
                 title = str(page.metadata.get("title", "") or "")
+                markdown = '\n'.join(matched_sections)
 
-                await sync_to_async(CrawlResultShowcase.objects.create)(
-                    url=page.url,
-                    keyword=raw_keyword,
-                    content_preview=markdown[:500]
-                )
+                if not first_match_url:
+                    first_match_url = page.url
 
-                f.write(f"# {title or '无标题'}\n")
-                f.write(f"链接: {page.url}\n\n")
-                f.write(markdown or '')
+                # 累加完整 markdown
+                full_markdown += f"# {title or '无标题'}\n"
+                full_markdown += f"链接: {page.url}\n\n"
+                full_markdown += markdown or ''
                 if image_markdown_lines:
-                    f.write("\n\n## 相关图片\n\n")
-                    f.write('\n\n'.join(image_markdown_lines))
-                f.write("\n\n---\n\n")
+                    full_markdown += "\n\n## 相关图片\n\n"
+                    full_markdown += '\n\n'.join(image_markdown_lines)
+                full_markdown += "\n\n---\n\n"
 
                 filtered_results.append({
                     "url": page.url,
                     "title": title,
                     "markdown": markdown[:10000]
                 })
+
+        f.write(full_markdown)
+
+    # ✅ 只记录一次
+    if full_markdown:
+        await sync_to_async(CrawlResultShowcase.objects.create)(
+            url=first_match_url or url,
+            keyword=raw_keyword,
+            content_preview=full_markdown[:500]
+        )
 
     # 打包为 zip
     zip_filename = f"crawl_result_{safe_keyword}_{timestamp}.zip"
@@ -245,16 +254,19 @@ async def run_crawler(
                 arcname = os.path.relpath(full_path, temp_dir)
                 zipf.write(full_path, arcname=arcname)
 
-    # 删除中间临时目录
+    # 删除临时目录
     try:
         import shutil
         shutil.rmtree(temp_dir)
     except Exception as e:
         print(f"[清理失败] {temp_dir}: {e}")
 
+
+
     return {
         'results': filtered_results,
         'filename': zip_filename,
         'download_url': f"/api/download/{zip_filename}"
     }
+
 
